@@ -9,7 +9,6 @@ class SimplexSolverLists:
         self.basis = [3, 4, 5] 
         self.path = []
         
-        #tableau with 2d lists [m+1 rows] x [n+1 columns]
         #row 0
         self.tableau = [[0.0] + [float(val) for val in c]]
         
@@ -20,7 +19,7 @@ class SimplexSolverLists:
 
     def printTableau(self, iteration, prow=None, pcol=None):
         print(f"\ntableau {iteration}")
-        headers = ["                "] + [f"x{i+1}" for i in range(self.numVars)]
+        headers = ["                "] + [f" x{i+1}" for i in range(self.numVars)]
         print(" | ".join(f"{h:^7}" for h in headers))
         print("-" * 80)
         
@@ -32,6 +31,9 @@ class SimplexSolverLists:
                 cell = f"*{val:6.1f}" if i == prow and j == pcol else f"{val:7.1f}"
                 printRow.append(cell)
             print(f"{label:5} | " + " | ".join(printRow))
+
+            if i == 0:
+                print("-" * 80) #formats and adds line after zeroth row
 
     def solve(self):
         iteration = 0 
@@ -71,7 +73,7 @@ class SimplexSolverLists:
 
             self.printTableau(iteration, prow, pcol)
             print(f"\n x{pcol} enters")
-            print(f"\n x{self.basis[prow-1]+1} exits.")
+            print(f"\n x{self.basis[prow-1]+1} exits")
 
             #pivot and do row operations
             pivot = self.tableau[prow][pcol]
@@ -83,7 +85,7 @@ class SimplexSolverLists:
                 if i != prow:
                     factor = self.tableau[i][pcol]
                     self.tableau[i] = [self.tableau[i][j] - factor * self.tableau[prow][j] 
-                                      for j in range(len(self.tableau[0]))]
+                                       for j in range(len(self.tableau[0]))]
             
             self.basis[prow-1] = pcol - 1
             iteration += 1
