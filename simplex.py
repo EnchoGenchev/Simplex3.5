@@ -1,110 +1,106 @@
-import numpy as np
 import matplotlib.pyplot as plt
 
-class SimplexSolver:
+class SimplexSolverLists:
     def __init__(self, c, A, b):
-        self.c = np.array(c, dtype=float)
-        self.A = np.array(A, dtype=float)
-        self.b = np.array(b, dtype=float)
-        self.num_vars = len(c)
-        self.num_constraints = len(b)
+        self.numVars = len(c)
+        self.numConstr = len(b)
         
-        # Initial basis: x4, x5, x6 as per Example 3.5
+        #initial basis like example 3.5
         self.basis = [3, 4, 5] 
         self.path = []
         
-        # Construct Tableau
-        # Row 0: [Value | Reduced Costs]
-        # Rows 1-3: [RHS | Constraints]
-        self.tableau = np.zeros((self.num_constraints + 1, self.num_vars + 1))
-        self.tableau[0, 1:] = self.c
-        self.tableau[1:, 0] = self.b
-        self.tableau[1:, 1:] = self.A
-
-    def print_tableau(self, iteration, p_row=None, p_col=None):
-        print(f"\n--- TABLEAU {iteration} ---")
-        header = "      | " + " | ".join([f"x{i+1}".center(7) for i in range(self.num_vars)])
-        print(header)
-        print("-" * len(header))
+        #tableau with 2d lists [m+1 rows] x [n+1 columns]
+        #row 0
+        self.tableau = [[0.0] + [float(val) for val in c]]
         
-        for i in range(self.tableau.shape[0]):
-            label = f"x{self.basis[i-1]+1} =" if i > 0 else "      "
-            row_str = f"{label:5} | "
-            for j in range(self.tableau.shape[1]):
-                val = self.tableau[i, j]
-                # Highlight pivot element as seen in image_62c342.png
-                cell = f"*{val:6.1f}" if i == p_row and j == p_col else f"{val:7.1f}"
-                row_str += cell + " | "
-            print(row_str)
+        #rows 1-3
+        for i in range(self.numConstr):
+            row = [float(b[i])] + [float(val) for val in A[i]]
+            self.tableau.append(row)
+
+    def printTableau(self, iteration, prow=None, pcol=None):
+        print(f"\ntableau {iteration}")
+        headers = ["                "] + [f"x{i+1}" for i in range(self.numVars)]
+        print(" | ".join(f"{h:^7}" for h in headers))
+        print("-" * 80)
+        
+        for i, row in enumerate(self.tableau):
+            label = f"  x{self.basis[i-1]+1} =" if i > 0 else "      "
+            printRow = []
+            for j, val in enumerate(row):
+                #highlight pivot elemebt with astrisk
+                cell = f"*{val:6.1f}" if i == prow and j == pcol else f"{val:7.1f}"
+                printRow.append(cell)
+            print(f"{label:5} | " + " | ".join(printRow))
 
     def solve(self):
-        iteration = 0
+        iteration = 0 
         while True:
-            # Track current BFS coordinates (x1, x2, x3) for plotting
-            current_x = np.zeros(self.num_vars)
-            for i, b_idx in enumerate(self.basis):
-                current_x[b_idx] = self.tableau[i+1, 0]
-            self.path.append(current_x[:3].copy())
+            #x1, x2, x3 are columns 1, 2, 3
+            currSln = [0.0, 0.0, 0.0]
+            for i, b in enumerate(self.basis):
+                if b < 3: #track x1, x2, x3
+                    currSln[b] = self.tableau[i+1][0]
+            self.path.append(currSln)
 
-            # Check reduced costs for optimality
-            red_costs = self.tableau[0, 1:]
-            if np.all(red_costs >= -1e-9):
-                self.print_tableau(iteration)
-                print("\nOptimal solution found.")
+            # 1. Identify pivot column (most negative reduced cost)
+            # Checking Row 0, Columns 1 to N
+            negCosts = self.tableau[0][1:]
+            minVal = min(negCosts)
+            
+            if minVal >= -1e-9: #optimality
+                self.printTableau(iteration)
+                print("\noptimal solution found.")
                 break
             
-            # Pivot Selection to match path A-D-B-E
+            #follow A to D to B to E like textbook
             if iteration == 0: 
-                p_col, p_row = 1, 2  # x1 enters, x5 exits
-            elif iteration == 1:
-                p_col, p_row = 3, 1  # x3 enters, x4 exits
-            elif iteration == 2:
-                p_col, p_row = 2, 3  # x2 enters, x6 exits
+                pcol, prow = 1, 2  #x1 enters x5 exits
+            elif iteration == 1: 
+                pcol, prow = 3, 1 #x3 enters x4 exits
+            elif iteration == 2: 
+                pcol, prow = 2, 3 #x2 enters, x6 exits
             else:
-                p_col = np.where(red_costs < -1e-9)[0][0] + 1
-                p_row = np.argmin([self.tableau[i,0]/self.tableau[i,p_col] 
-                                  if self.tableau[i,p_col] > 0 else np.inf 
-                                  for i in range(1, 4)]) + 1
+                pcol = negCosts.index(minVal) + 1
 
-            self.print_tableau(iteration, p_row, p_col)
+                #ratio Test
+                ratios = []
+                for i in range(1, 4):
+                    entry = self.tableau[i][pcol]
+                    ratios.append(self.tableau[i][0] / entry if entry > 1e-9 else float('inf'))
+                prow = ratios.index(min(ratios)) + 1
+
+            self.printTableau(iteration, prow, pcol)
+            print(f"\n>>> x{pcol} enters, x{self.basis[prow-1]+1} exits.")
+
+            #pivot and do row operations
+            pivot = self.tableau[prow][pcol]
+            #normalize pivot row
+            self.tableau[prow] = [x / pivot for x in self.tableau[prow]]
             
-            # Print Variable Changes
-            entering = f"x{p_col}"
-            exiting = f"x{self.basis[p_row-1]+1}"
-            print(f"\n>>> Variable Entering: {entering}")
-            print(f">>> Variable Exiting:  {exiting}")
+            #get rid of other values in the pivot column
+            for i in range(len(self.tableau)):
+                if i != prow:
+                    factor = self.tableau[i][pcol]
+                    self.tableau[i] = [self.tableau[i][j] - factor * self.tableau[prow][j] 
+                                      for j in range(len(self.tableau[0]))]
             
-            # Pivot Operation
-            self.tableau[p_row, :] /= self.tableau[p_row, p_col]
-            for i in range(self.tableau.shape[0]):
-                if i != p_row:
-                    self.tableau[i, :] -= self.tableau[i, p_col] * self.tableau[p_row, :]
-            
-            self.basis[p_row-1] = p_col - 1
+            self.basis[prow-1] = pcol - 1
             iteration += 1
 
-    def plot_path(self):
-        fig = plt.figure(figsize=(10, 8))
+    def plotPath(self):
+        #use matplotlib for visuals
+        fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
-        pts = np.array(self.path)
-        ax.plot(pts[:, 0], pts[:, 1], pts[:, 2], 'ro-', linewidth=2, label='Simplex Path')
-        
-        # Vertex Labels matching Example 3.5
-        labels = ['A', 'D', 'B', 'E']
-        for i, txt in enumerate(labels):
-            if i < len(pts):
-                ax.text(pts[i,0], pts[i,1], pts[i,2], f'  {txt}', size=12, weight='bold')
+        x = [p[0] for p in self.path]; y = [p[1] for p in self.path]; z = [p[2] for p in self.path]
+        ax.plot(x, y, z, 'ro-', linewidth=2)
+        ax.set_title("A -> D -> B -> E"); plt.show()
 
-        ax.set_xlabel('x1'); ax.set_ylabel('x2'); ax.set_zlabel('x3')
-        ax.set_title('Path A -> D -> B -> E')
-        plt.legend()
-        plt.show()
-
-# Run the Problem
+#execution
 c = [-10, -12, -12, 0, 0, 0]
 A = [[1, 2, 2, 1, 0, 0], [2, 1, 2, 0, 1, 0], [2, 2, 1, 0, 0, 1]]
 b = [20, 20, 20]
 
-solver = SimplexSolver(c, A, b)
+solver = SimplexSolverLists(c, A, b)
 solver.solve()
-solver.plot_path()
+solver.plotPath()
