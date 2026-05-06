@@ -43,19 +43,18 @@ class SimplexSolverLists:
                     currSln[b] = self.tableau[i+1][0]
             self.path.append(currSln)
 
-            # 1. Identify pivot column (most negative reduced cost)
-            # Checking Row 0, Columns 1 to N
+            #checking row 0 for most negative value
             negCosts = self.tableau[0][1:]
             minVal = min(negCosts)
             
             if minVal >= -1e-9: #optimality
                 self.printTableau(iteration)
-                print("\noptimal solution found.")
+                print("\noptimal solution")
                 break
             
             #follow A to D to B to E like textbook
             if iteration == 0: 
-                pcol, prow = 1, 2  #x1 enters x5 exits
+                pcol, prow = 1, 2 #x1 enters x5 exits
             elif iteration == 1: 
                 pcol, prow = 3, 1 #x3 enters x4 exits
             elif iteration == 2: 
@@ -71,7 +70,8 @@ class SimplexSolverLists:
                 prow = ratios.index(min(ratios)) + 1
 
             self.printTableau(iteration, prow, pcol)
-            print(f"\n>>> x{pcol} enters, x{self.basis[prow-1]+1} exits.")
+            print(f"\n x{pcol} enters")
+            print(f"\n x{self.basis[prow-1]+1} exits.")
 
             #pivot and do row operations
             pivot = self.tableau[prow][pcol]
